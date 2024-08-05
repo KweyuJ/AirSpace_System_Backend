@@ -11,10 +11,10 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///airescape.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config["JWT_SECRET_KEY"] = "super-secret"
 app.json.compact = False
-app.config["JWT_SECRET_KEY"] = "super-secret" 
-CORS(app)
 
+CORS(app)
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
@@ -37,18 +37,34 @@ class Users(Resource):
 
     def post(self):
         data = request.get_json()
+        email = data['email']
+
+        # Check if the email already exists
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            return make_response(jsonify({"error": "Email already exists"}), 422)
+
         new_user = User(
             title=data.get('title'),
             first_name=data['first_name'],
             last_name=data['last_name'],
-            email=data['email'],
-            password=bcrypt.generate_password_hash(request.json.get("password")),
+            email=email,
+            password=bcrypt.generate_password_hash(data.get("password")).decode('utf-8'),
             role=data['role'],
             phone_number=data['phone_number']
         )
         db.session.add(new_user)
         db.session.commit()
-        return make_response(jsonify(new_user.to_dict()), 201)
+
+        access_token = create_access_token(identity=new_user.user_id)  # Use new_user.user_id
+
+        response = {
+            "user": new_user.to_dict(),
+            "access_token": access_token
+        }
+
+        return make_response(jsonify(response), 201)
+
 
 api.add_resource(Users, '/users')
 
@@ -105,7 +121,6 @@ class Flights(Resource):
         return make_response(jsonify(new_flight.to_dict()), 201)
 
 api.add_resource(Flights, '/flights')
-
 
 class FlightByID(Resource):
     def get(self, flight_id):
@@ -242,12 +257,9 @@ class Bookings(Resource):
         data = request.get_json()
         new_booking = Booking(
             user_id=data['user_id'],
-            booking_date=data['booking_date'],
-            total_price=data['total_price'],
-            booking_type=data['booking_type'],
-            booking_status=data['booking_status'],
-            flight_id=data.get('flight_id'),
-            hotel_id=data.get('hotel_id')
+            flight_id=data['flight_id'],
+            hotel_id=data.get('hotel_id'),  # Optional field
+            booking_date=datetime.now()
         )
         db.session.add(new_booking)
         db.session.commit()
@@ -260,14 +272,6 @@ class BookingByID(Resource):
         booking = Booking.query.get_or_404(booking_id)
         return make_response(jsonify(booking.to_dict()), 200)
 
-    def patch(self, booking_id):
-        booking = Booking.query.get_or_404(booking_id)
-        data = request.get_json()
-        for key, value in data.items():
-            setattr(booking, key, value)
-        db.session.commit()
-        return make_response(jsonify(booking.to_dict()), 200)
-
     def delete(self, booking_id):
         booking = Booking.query.get_or_404(booking_id)
         db.session.delete(booking)
@@ -275,6 +279,20 @@ class BookingByID(Resource):
         return make_response(jsonify({"message": "Booking deleted"}), 200)
 
 api.add_resource(BookingByID, '/bookings/<int:booking_id>')
+
+class Login(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data['email']
+        password = data['password']
+
+        user = User.query.filter_by(email=email).first()
+        if user and bcrypt.check_password_hash(user.password, password):
+            access_token = create_access_token(identity=user.user_id)  # Use user.user_id
+            return make_response(jsonify({"access_token": access_token}), 200)
+        return make_response(jsonify({"error": "Invalid email or password"}), 401)
+
+api.add_resource(Login, '/login')
 
 if __name__ == '__main__':
     app.run(debug=True)
