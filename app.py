@@ -4,13 +4,20 @@ from flask_restful import Api, Resource
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from models import db, User, Flight, Hotel, UserFlight, UserHotel, Booking
+from flask_bcrypt import Bcrypt
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///airescape.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json.compact = False
+app.config["JWT_SECRET_KEY"] = "super-secret" 
+CORS(app)
 
 migrate = Migrate(app, db)
+bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
 db.init_app(app)
 
 api = Api(app)
@@ -35,7 +42,7 @@ class Users(Resource):
             first_name=data['first_name'],
             last_name=data['last_name'],
             email=data['email'],
-            password=data['password'],
+            password=bcrypt.generate_password_hash(request.json.get("password")),
             role=data['role'],
             phone_number=data['phone_number']
         )
