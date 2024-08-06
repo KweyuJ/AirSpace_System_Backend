@@ -7,6 +7,7 @@ from models import db, User, Flight, Hotel, UserFlight, UserHotel, Booking
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from functools import wraps
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///airescape.db'
@@ -22,6 +23,20 @@ db.init_app(app)
 
 api = Api(app)
 
+# Decorator for Admin Access
+def admin_required(fn):
+    @wraps(fn)
+    @jwt_required()
+    def wrapper(*args, **kwargs):
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if user is None:
+            return jsonify({"error": "User not found"}), 404
+        if user.role != 'admin':
+            return jsonify({"error": "Admin access required"}), 403
+        return fn(*args, **kwargs)
+    return wrapper
+
 class Index(Resource):
     def get(self):
         response_dict = {"message": "Welcome to the AirEscape RESTful API"}
@@ -31,6 +46,11 @@ api.add_resource(Index, '/')
 
 class Users(Resource):
     def get(self):
+        # Admins should be able to list all users
+        user_id = get_jwt_identity()
+        user = User.query.get_or_404(user_id)
+        if user.role != 'admin':
+            return make_response(jsonify({"error": "Admin access required"}), 403)
         users = User.query.all()
         response = [user.to_dict() for user in users]
         return make_response(jsonify(response), 200)
@@ -50,13 +70,13 @@ class Users(Resource):
             last_name=data['last_name'],
             email=email,
             password=bcrypt.generate_password_hash(data.get("password")).decode('utf-8'),
-            role=data['role'],
+            role=data.get('role', 'traveler'),
             phone_number=data['phone_number']
         )
         db.session.add(new_user)
         db.session.commit()
 
-        access_token = create_access_token(identity=new_user.user_id)  # Use new_user.user_id
+        access_token = create_access_token(identity=new_user.user_id)  
 
         response = {
             "user": new_user.to_dict(),
@@ -65,23 +85,34 @@ class Users(Resource):
 
         return make_response(jsonify(response), 201)
 
-
 api.add_resource(Users, '/users')
 
 class UserByID(Resource):
+    @jwt_required()
     def get(self, user_id):
+        current_user_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
+        if user_id != current_user_id and User.query.get(current_user_id).role != 'admin':
+            return make_response(jsonify({"error": "Access denied"}), 403)
         return make_response(jsonify(user.to_dict()), 200)
 
+    @jwt_required()
     def patch(self, user_id):
+        current_user_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
+        if user_id != current_user_id and User.query.get(current_user_id).role != 'admin':
+            return make_response(jsonify({"error": "Access denied"}), 403)
         data = request.get_json()
         for key, value in data.items():
             setattr(user, key, value)
         db.session.commit()
         return make_response(jsonify(user.to_dict()), 200)
 
+    @jwt_required()
     def delete(self, user_id):
+        current_user_id = get_jwt_identity()
+        if User.query.get(current_user_id).role != 'admin':
+            return make_response(jsonify({"error": "Admin access required"}), 403)
         user = User.query.get_or_404(user_id)
         db.session.delete(user)
         db.session.commit()
@@ -95,6 +126,7 @@ class Flights(Resource):
         response = [flight.to_dict() for flight in flights]
         return make_response(jsonify(response), 200)
 
+    @admin_required
     def post(self):
         data = request.get_json()
         
@@ -127,6 +159,7 @@ class FlightByID(Resource):
         flight = Flight.query.get_or_404(flight_id)
         return make_response(jsonify(flight.to_dict()), 200)
 
+    @admin_required
     def patch(self, flight_id):
         flight = Flight.query.get_or_404(flight_id)
         data = request.get_json()
@@ -135,6 +168,7 @@ class FlightByID(Resource):
         db.session.commit()
         return make_response(jsonify(flight.to_dict()), 200)
 
+    @admin_required
     def delete(self, flight_id):
         flight = Flight.query.get_or_404(flight_id)
         db.session.delete(flight)
@@ -149,6 +183,7 @@ class Hotels(Resource):
         response = [hotel.to_dict() for hotel in hotels]
         return make_response(jsonify(response), 200)
 
+    @admin_required
     def post(self):
         data = request.get_json()
         new_hotel = Hotel(
@@ -169,6 +204,7 @@ class HotelByID(Resource):
         hotel = Hotel.query.get_or_404(hotel_id)
         return make_response(jsonify(hotel.to_dict()), 200)
 
+    @admin_required
     def patch(self, hotel_id):
         hotel = Hotel.query.get_or_404(hotel_id)
         data = request.get_json()
@@ -177,6 +213,7 @@ class HotelByID(Resource):
         db.session.commit()
         return make_response(jsonify(hotel.to_dict()), 200)
 
+    @admin_required
     def delete(self, hotel_id):
         hotel = Hotel.query.get_or_404(hotel_id)
         db.session.delete(hotel)
@@ -191,6 +228,7 @@ class UserFlights(Resource):
         response = [user_flight.to_dict() for user_flight in user_flights]
         return make_response(jsonify(response), 200)
 
+    @admin_required
     def post(self):
         data = request.get_json()
         new_user_flight = UserFlight(
@@ -208,6 +246,7 @@ class UserFlightByID(Resource):
         user_flight = UserFlight.query.get_or_404(user_flight_id)
         return make_response(jsonify(user_flight.to_dict()), 200)
 
+    @admin_required
     def delete(self, user_flight_id):
         user_flight = UserFlight.query.get_or_404(user_flight_id)
         db.session.delete(user_flight)
@@ -222,6 +261,7 @@ class UserHotels(Resource):
         response = [user_hotel.to_dict() for user_hotel in user_hotels]
         return make_response(jsonify(response), 200)
 
+    @admin_required
     def post(self):
         data = request.get_json()
         new_user_hotel = UserHotel(
@@ -239,6 +279,7 @@ class UserHotelByID(Resource):
         user_hotel = UserHotel.query.get_or_404(user_hotel_id)
         return make_response(jsonify(user_hotel.to_dict()), 200)
 
+    @admin_required
     def delete(self, user_hotel_id):
         user_hotel = UserHotel.query.get_or_404(user_hotel_id)
         db.session.delete(user_hotel)
@@ -253,13 +294,16 @@ class Bookings(Resource):
         response = [booking.to_dict() for booking in bookings]
         return make_response(jsonify(response), 200)
 
+    @admin_required
     def post(self):
         data = request.get_json()
         new_booking = Booking(
             user_id=data['user_id'],
-            flight_id=data['flight_id'],
-            hotel_id=data.get('hotel_id'),  # Optional field
-            booking_date=datetime.now()
+            flight_id=data.get('flight_id'),
+            hotel_id=data.get('hotel_id'),
+            check_in_date=datetime.fromisoformat(data['check_in_date']),
+            check_out_date=datetime.fromisoformat(data['check_out_date']),
+            total_price=data['total_price']
         )
         db.session.add(new_booking)
         db.session.commit()
@@ -272,6 +316,16 @@ class BookingByID(Resource):
         booking = Booking.query.get_or_404(booking_id)
         return make_response(jsonify(booking.to_dict()), 200)
 
+    @admin_required
+    def patch(self, booking_id):
+        booking = Booking.query.get_or_404(booking_id)
+        data = request.get_json()
+        for key, value in data.items():
+            setattr(booking, key, value)
+        db.session.commit()
+        return make_response(jsonify(booking.to_dict()), 200)
+
+    @admin_required
     def delete(self, booking_id):
         booking = Booking.query.get_or_404(booking_id)
         db.session.delete(booking)
@@ -279,6 +333,8 @@ class BookingByID(Resource):
         return make_response(jsonify({"message": "Booking deleted"}), 200)
 
 api.add_resource(BookingByID, '/bookings/<int:booking_id>')
+
+
 
 class Login(Resource):
     def post(self):
@@ -288,11 +344,16 @@ class Login(Resource):
 
         user = User.query.filter_by(email=email).first()
         if user and bcrypt.check_password_hash(user.password, password):
-            access_token = create_access_token(identity=user.user_id)  # Use user.user_id
-            return make_response(jsonify({"access_token": access_token}), 200)
-        return make_response(jsonify({"error": "Invalid email or password"}), 401)
+            access_token = create_access_token(identity=user.user_id)
+            response = {
+                "token": access_token,
+                "role": user.role,
+                "id": user.user_id
+            }
+            return make_response(jsonify(response), 200)
+        return make_response(jsonify({"error": "Invalid credentials"}), 401)
 
-api.add_resource(Login, '/login')
+api.add_resource(Login, '/login/email')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
