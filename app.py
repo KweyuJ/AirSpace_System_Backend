@@ -59,7 +59,7 @@ class Users(Resource):
         data = request.get_json()
         email = data['email']
 
-        # Check if the email already exists
+        # Check if the email already exists and should add an error if it does
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
             return make_response(jsonify({"error": "Email already exists"}), 422)
