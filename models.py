@@ -60,7 +60,6 @@ class User(db.Model, SerializerMixin):
 
     def __repr__(self):
         return f'<User {self.user_id}, {self.first_name}, {self.email}, {self.role}>'
-
 class Flight(db.Model, SerializerMixin):
     __tablename__ = 'flights'
     
@@ -70,6 +69,8 @@ class Flight(db.Model, SerializerMixin):
     arrival_city = db.Column(db.String, nullable=False)
     departure_date = db.Column(db.DateTime, nullable=False)
     arrival_date = db.Column(db.DateTime, nullable=False)
+    departure_time = db.Column(db.Time, nullable=False)  # New field
+    arrival_time = db.Column(db.Time, nullable=False)  # New field
     price = db.Column(db.Float, nullable=False)
     seats_available = db.Column(db.Integer, nullable=False)
     
@@ -84,6 +85,8 @@ class Flight(db.Model, SerializerMixin):
             'arrival_city': self.arrival_city,
             'departure_date': self.departure_date.isoformat() if self.departure_date else None,
             'arrival_date': self.arrival_date.isoformat() if self.arrival_date else None,
+            'departure_time': self.departure_time.isoformat() if self.departure_time else None,
+            'arrival_time': self.arrival_time.isoformat() if self.arrival_time else None,
             'price': self.price,
             'seats_available': self.seats_available,
             
@@ -93,6 +96,7 @@ class Flight(db.Model, SerializerMixin):
 
     def __repr__(self):
         return f'<Flight {self.flight_id}, {self.flight_number}>'
+
 
 class Hotel(db.Model, SerializerMixin):
     __tablename__ = 'hotels'
