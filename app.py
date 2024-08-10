@@ -122,14 +122,49 @@ api.add_resource(UserByID, '/users/<int:user_id>')
 
 class Flights(Resource):
     def get(self):
-        flights = Flight.query.all()
+        from_city = request.args.get('from')
+        to_city = request.args.get('to')
+        depart_date_str = request.args.get('departDate')
+        return_date_str = request.args.get('returnDate')
+        trip_type = request.args.get('tripType')
+        passengers = int(request.args.get('passengers', 1))
+
+        query = Flight.query
+
+        if from_city:
+            query = query.filter_by(departure_city=from_city)
+        if to_city:
+            query = query.filter_by(arrival_city=to_city)
+        if depart_date_str:
+            try:
+                depart_date = datetime.strptime(depart_date_str, '%Y-%m-%d').date()
+                query = query.filter(Flight.departure_date == depart_date)
+            except ValueError:
+                return make_response(jsonify({"error": "Invalid departure date format"}), 400)
+        if return_date_str and trip_type == 'roundtrip':
+            try:
+                return_date = datetime.strptime(return_date_str, '%Y-%m-%d').date()
+                query = query.filter(Flight.arrival_date == return_date)
+            except ValueError:
+                return make_response(jsonify({"error": "Invalid return date format"}), 400)
+        
+        # Ensure passengers is an integer and filter based on seats available
+        query = query.filter(Flight.seats_available >= passengers)
+
+        flights = query.all()
         response = [flight.to_dict() for flight in flights]
         return make_response(jsonify(response), 200)
 
     @admin_required
     def post(self):
         data = request.get_json()
-        
+
+        # Validate required fields
+        required_fields = ['flight_number', 'departure_city', 'arrival_city', 'departure_date', 'arrival_date', 'price', 'seats_available']
+        for field in required_fields:
+            if field not in data:
+                return make_response(jsonify({"error": f"Missing field: {field}"}), 400)
+
         # Convert date strings to datetime objects
         try:
             departure_date = datetime.fromisoformat(data['departure_date'])
@@ -354,6 +389,7 @@ class Login(Resource):
         return make_response(jsonify({"error": "Invalid credentials"}), 401)
 
 api.add_resource(Login, '/login/email')
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

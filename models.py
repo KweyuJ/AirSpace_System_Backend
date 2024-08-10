@@ -69,11 +69,12 @@ class Flight(db.Model, SerializerMixin):
     arrival_city = db.Column(db.String, nullable=False)
     departure_date = db.Column(db.DateTime, nullable=False)
     arrival_date = db.Column(db.DateTime, nullable=False)
-    departure_time = db.Column(db.Time, nullable=False)  # New field
-    arrival_time = db.Column(db.Time, nullable=False)  # New field
+    departure_time = db.Column(db.Time, nullable=False)
+    arrival_time = db.Column(db.Time, nullable=False)
     price = db.Column(db.Float, nullable=False)
     seats_available = db.Column(db.Integer, nullable=False)
-    
+    trip_type = db.Column(db.String(10), nullable=False)  # New field
+
     user_flights = db.relationship('UserFlight', back_populates='flight', cascade="all, delete-orphan")
     bookings = db.relationship('Booking', back_populates='flight', cascade="all, delete-orphan")
 
@@ -89,13 +90,14 @@ class Flight(db.Model, SerializerMixin):
             'arrival_time': self.arrival_time.isoformat() if self.arrival_time else None,
             'price': self.price,
             'seats_available': self.seats_available,
-            
+            'trip_type': self.trip_type,
             'user_flights': [uf.to_dict() for uf in self.user_flights],
             'bookings': [b.to_dict() for b in self.bookings]
         }
 
     def __repr__(self):
-        return f'<Flight {self.flight_id}, {self.flight_number}>'
+        return f'<Flight {self.flight_id}, {self.flight_number}, {self.trip_type}>'
+
 
 
 class Hotel(db.Model, SerializerMixin):
