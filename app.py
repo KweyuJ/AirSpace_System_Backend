@@ -124,36 +124,49 @@ class Flights(Resource):
     def get(self):
         from_city = request.args.get('from')
         to_city = request.args.get('to')
-        depart_date_str = request.args.get('departDate')
         return_date_str = request.args.get('returnDate')
-        trip_type = request.args.get('tripType')
+        outbound_date_str = request.args.get('outboundDate')
+        trip_type = request.args.get('tripType', 'oneway')  # Default to 'oneway' if not provided
         passengers = int(request.args.get('passengers', 1))
 
-        query = Flight.query
+        # Check if mandatory parameters are provided
+        if not from_city or not to_city or not outbound_date_str:
+            return make_response(jsonify({"error": "From, to cities, and outboundDate are required"}), 400)
 
-        if from_city:
-            query = query.filter_by(departure_city=from_city)
-        if to_city:
-            query = query.filter_by(arrival_city=to_city)
-        if depart_date_str:
-            try:
-                depart_date = datetime.strptime(depart_date_str, '%Y-%m-%d').date()
-                query = query.filter(Flight.departure_date == depart_date)
-            except ValueError:
-                return make_response(jsonify({"error": "Invalid departure date format"}), 400)
-        if return_date_str and trip_type == 'roundtrip':
-            try:
-                return_date = datetime.strptime(return_date_str, '%Y-%m-%d').date()
-                query = query.filter(Flight.arrival_date == return_date)
-            except ValueError:
-                return make_response(jsonify({"error": "Invalid return date format"}), 400)
-        
-        # Ensure passengers is an integer and filter based on seats available
-        query = query.filter(Flight.seats_available >= passengers)
+        # Check if returnDate is required based on tripType
+        if trip_type == 'roundtrip' and not return_date_str:
+            return make_response(jsonify({"error": "ReturnDate is required for roundtrip"}), 400)
 
-        flights = query.all()
-        response = [flight.to_dict() for flight in flights]
+        try:
+            # Parse the dates
+            outbound_date = datetime.strptime(outbound_date_str, '%Y-%m-%d').date()
+            return_date = datetime.strptime(return_date_str, '%Y-%m-%d').date() if return_date_str else None
+        except ValueError:
+            return make_response(jsonify({"error": "Invalid date format"}), 400)
+
+        # Query for outbound flights
+        outbound_flights_query = Flight.query.filter_by(departure_city=from_city, arrival_city=to_city)
+        outbound_flights_query = outbound_flights_query.filter(db.func.date(Flight.departure_date) == outbound_date)
+        outbound_flights_query = outbound_flights_query.filter(Flight.seats_available >= passengers)
+        outbound_flights = outbound_flights_query.all()
+
+        response = {
+            'outbound_flights': [flight.to_dict() for flight in outbound_flights]
+        }
+
+        # If it's a roundtrip, query for return flights
+        if trip_type == 'roundtrip':
+            # Query for return flights
+            return_flights_query = Flight.query.filter_by(departure_city=to_city, arrival_city=from_city)
+            return_flights_query = return_flights_query.filter(db.func.date(Flight.departure_date) == return_date)
+            return_flights_query = return_flights_query.filter(Flight.seats_available >= passengers)
+            return_flights = return_flights_query.all()
+            
+            response['return_flights'] = [flight.to_dict() for flight in return_flights]
+
         return make_response(jsonify(response), 200)
+
+
 
     @admin_required
     def post(self):
@@ -188,6 +201,11 @@ class Flights(Resource):
         return make_response(jsonify(new_flight.to_dict()), 201)
 
 api.add_resource(Flights, '/flights')
+
+
+
+
+
 
 class FlightByID(Resource):
     def get(self, flight_id):

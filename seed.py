@@ -20,19 +20,30 @@ with app.app_context():
 
     print("Creating flights...")
     flights = [
-    Flight(flight_number="AA123", departure_city="Nairobi", arrival_city="Kisumu", departure_date=datetime(2024, 8, 15), arrival_date=datetime(2024, 8, 15), departure_time=time(10, 0), arrival_time=time(11, 0), price=7420, seats_available=10, trip_type="oneway"),
-    Flight(flight_number="BA456", departure_city="Mombasa", arrival_city="Nairobi", departure_date=datetime(2024, 9, 10), arrival_date=datetime(2024, 9, 10), departure_time=time(9, 0), arrival_time=time(10, 0), price=7000, seats_available=80, trip_type="roundtrip"),
-    Flight(flight_number="CA789", departure_city="Eldoret", arrival_city="Nairobi", departure_date=datetime(2024, 10, 5), arrival_date=datetime(2024, 10, 5), departure_time=time(8, 0), arrival_time=time(9, 0), price=8025, seats_available=6, trip_type="oneway"),
-    Flight(flight_number="DA321", departure_city="Nairobi", arrival_city="Mombasa", departure_date=datetime(2024, 11, 20), arrival_date=datetime(2024, 11, 20), departure_time=time(7, 0), arrival_time=time(8, 0), price=9940, seats_available=12, trip_type="oneway"),
-    Flight(flight_number="EA654", departure_city="Kisumu", arrival_city="Nairobi", departure_date=datetime(2024, 12, 1), arrival_date=datetime(2024, 12, 1), departure_time=time(6, 0), arrival_time=time(7, 0), price=9560, seats_available=12, trip_type="roundtrip"),
-    Flight(flight_number="FA987", departure_city="Nairobi", arrival_city="Eldoret", departure_date=datetime(2024, 12, 10), arrival_date=datetime(2024, 12, 10), departure_time=time(5, 0), arrival_time=time(6, 0), price=6999, seats_available=7, trip_type="oneway"),
-    Flight(flight_number="GA123", departure_city="Mombasa", arrival_city="Kisumu", departure_date=datetime(2024, 12, 15), arrival_date=datetime(2024, 12, 15), departure_time=time(4, 0), arrival_time=time(5, 0), price=7500, seats_available=5, trip_type="roundtrip"),
-    Flight(flight_number="HA456", departure_city="Kisumu", arrival_city="Eldoret", departure_date=datetime(2024, 12, 20), arrival_date=datetime(2024, 12, 20), departure_time=time(3, 0), arrival_time=time(4, 0), price=8175, seats_available=9, trip_type="oneway"),
-    Flight(flight_number="IA789", departure_city="Eldoret", arrival_city="Mombasa", departure_date=datetime(2024, 12, 25), arrival_date=datetime(2024, 12, 25), departure_time=time(2, 0), arrival_time=time(3, 0), price=7999, seats_available=50, trip_type="roundtrip"),
-    Flight(flight_number="JA321", departure_city="Nairobi", arrival_city="Nakuru", departure_date=datetime(2024, 12, 30), arrival_date=datetime(2024, 12, 30), departure_time=time(1, 0), arrival_time=time(2, 0), price=6400, seats_available=11, trip_type="oneway"),
-    Flight(flight_number="KA654", departure_city="Nakuru", arrival_city="Nairobi", departure_date=datetime(2024, 12, 31), arrival_date=datetime(2024, 12, 31), departure_time=time(0, 0), arrival_time=time(1, 0), price=6740, seats_available=15, trip_type="roundtrip"),
-]
-
+        Flight(flight_number="AA123", departure_city="Nairobi", arrival_city="Kisumu", departure_date=datetime(2024, 8, 15), arrival_date=datetime(2024, 8, 15), departure_time=time(10, 0), arrival_time=time(11, 0), price=7420, seats_available=10, trip_type="oneway"),
+        Flight(flight_number="BA456", departure_city="Mombasa", arrival_city="Nairobi", departure_date=datetime(2024, 9, 10), arrival_date=datetime(2024, 9, 10), departure_time=time(9, 0), arrival_time=time(10, 0), price=7000, seats_available=80, trip_type="oneway"),
+        
+        # Roundtrip flights: Nairobi to Kisumu and back
+        Flight(flight_number="RT123-OUT", departure_city="Nairobi", arrival_city="Kisumu", departure_date=datetime(2024, 12, 15), arrival_date=datetime(2024, 12, 15), departure_time=time(8, 0), arrival_time=time(9, 0), price=5000, seats_available=20, trip_type="roundtrip"),
+        Flight(flight_number="RT123-RET", departure_city="Kisumu", arrival_city="Nairobi", departure_date=datetime(2024, 12, 20), arrival_date=datetime(2024, 12, 20), departure_time=time(10, 0), arrival_time=time(11, 0), price=5000, seats_available=20, trip_type="roundtrip"),
+        
+        # Roundtrip flights: Mombasa to Nairobi and back
+        Flight(flight_number="RT456-OUT", departure_city="Mombasa", arrival_city="Nairobi", departure_date=datetime(2024, 9, 10), arrival_date=datetime(2024, 9, 10), departure_time=time(9, 0), arrival_time=time(10, 0), price=7000, seats_available=80, trip_type="roundtrip"),
+        Flight(flight_number="RT456-RET", departure_city="Nairobi", arrival_city="Mombasa", departure_date=datetime(2024, 11, 20), arrival_date=datetime(2024, 11, 20), departure_time=time(7, 0), arrival_time=time(8, 0), price=9940, seats_available=12, trip_type="roundtrip"),
+        
+        # Roundtrip flights: Eldoret to Mombasa and back
+        Flight(flight_number="RT789-OUT", departure_city="Eldoret", arrival_city="Mombasa", departure_date=datetime(2024, 12, 25), arrival_date=datetime(2024, 12, 25), departure_time=time(2, 0), arrival_time=time(3, 0), price=7999, seats_available=50, trip_type="roundtrip"),
+        Flight(flight_number="RT789-RET", departure_city="Mombasa", arrival_city="Eldoret", departure_date=datetime(2024, 12, 30), arrival_date=datetime(2024, 12, 30), departure_time=time(1, 0), arrival_time=time(2, 0), price=6400, seats_available=11, trip_type="roundtrip"),
+        
+        Flight(flight_number="CA789", departure_city="Eldoret", arrival_city="Nairobi", departure_date=datetime(2024, 10, 5), arrival_date=datetime(2024, 10, 5), departure_time=time(8, 0), arrival_time=time(9, 0), price=8025, seats_available=6, trip_type="oneway"),
+        Flight(flight_number="DA321", departure_city="Nairobi", arrival_city="Mombasa", departure_date=datetime(2024, 11, 20), arrival_date=datetime(2024, 11, 20), departure_time=time(7, 0), arrival_time=time(8, 0), price=9940, seats_available=12, trip_type="oneway"),
+        Flight(flight_number="EA654", departure_city="Kisumu", arrival_city="Nairobi", departure_date=datetime(2024, 12, 1), arrival_date=datetime(2024, 12, 1), departure_time=time(6, 0), arrival_time=time(7, 0), price=9560, seats_available=12, trip_type="oneway"),
+        Flight(flight_number="FA987", departure_city="Nairobi", arrival_city="Eldoret", departure_date=datetime(2024, 12, 10), arrival_date=datetime(2024, 12, 10), departure_time=time(5, 0), arrival_time=time(6, 0), price=6999, seats_available=7, trip_type="oneway"),
+        Flight(flight_number="GA123", departure_city="Mombasa", arrival_city="Kisumu", departure_date=datetime(2024, 12, 15), arrival_date=datetime(2024, 12, 15), departure_time=time(4, 0), arrival_time=time(5, 0), price=7500, seats_available=5, trip_type="oneway"),
+        Flight(flight_number="HA456", departure_city="Kisumu", arrival_city="Eldoret", departure_date=datetime(2024, 12, 20), arrival_date=datetime(2024, 12, 20), departure_time=time(3, 0), arrival_time=time(4, 0), price=8175, seats_available=9, trip_type="oneway"),
+        Flight(flight_number="JA321", departure_city="Nairobi", arrival_city="Nakuru", departure_date=datetime(2024, 12, 30), arrival_date=datetime(2024, 12, 30), departure_time=time(1, 0), arrival_time=time(2, 0), price=6400, seats_available=11, trip_type="oneway"),
+        Flight(flight_number="KA654", departure_city="Nakuru", arrival_city="Nairobi", departure_date=datetime(2024, 12, 31), arrival_date=datetime(2024, 12, 31), departure_time=time(0, 0), arrival_time=time(1, 0), price=6740, seats_available=15, trip_type="oneway")
+    ]
 
     print("Creating hotels...")
     hotels = [
@@ -81,5 +92,3 @@ with app.app_context():
     db.session.add_all(user_hotels)
     db.session.commit()
     print("Data added successfully.")
-
-   
