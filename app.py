@@ -129,16 +129,20 @@ class Flights(Resource):
         trip_type = request.args.get('tripType', 'oneway')  # Default to 'oneway' if not provided
         passengers = int(request.args.get('passengers', 1))
 
-        # Check if mandatory parameters are provided
+        # If no specific search parameters are provided, return all flights
+        if not from_city and not to_city and not outbound_date_str:
+            flights = Flight.query.all()
+            response = [flight.to_dict() for flight in flights]
+            return make_response(jsonify(response), 200)
+
+        # Existing logic for filtering flights
         if not from_city or not to_city or not outbound_date_str:
             return make_response(jsonify({"error": "From, to cities, and outboundDate are required"}), 400)
 
-        # Check if returnDate is required based on tripType
         if trip_type == 'roundtrip' and not return_date_str:
             return make_response(jsonify({"error": "ReturnDate is required for roundtrip"}), 400)
 
         try:
-            # Parse the dates
             outbound_date = datetime.strptime(outbound_date_str, '%Y-%m-%d').date()
             return_date = datetime.strptime(return_date_str, '%Y-%m-%d').date() if return_date_str else None
         except ValueError:
@@ -154,19 +158,15 @@ class Flights(Resource):
             'outbound_flights': [flight.to_dict() for flight in outbound_flights]
         }
 
-        # If it's a roundtrip, query for return flights
         if trip_type == 'roundtrip':
-            # Query for return flights
             return_flights_query = Flight.query.filter_by(departure_city=to_city, arrival_city=from_city)
             return_flights_query = return_flights_query.filter(db.func.date(Flight.departure_date) == return_date)
             return_flights_query = return_flights_query.filter(Flight.seats_available >= passengers)
             return_flights = return_flights_query.all()
-            
+
             response['return_flights'] = [flight.to_dict() for flight in return_flights]
 
         return make_response(jsonify(response), 200)
-
-
 
     @admin_required
     def post(self):
@@ -202,11 +202,6 @@ class Flights(Resource):
 
 api.add_resource(Flights, '/flights')
 
-
-
-
-
-
 class FlightByID(Resource):
     def get(self, flight_id):
         flight = Flight.query.get_or_404(flight_id)
@@ -232,19 +227,20 @@ api.add_resource(FlightByID, '/flights/<int:flight_id>')
 
 class Hotels(Resource):
     def get(self):
-        hotels = Hotel.query.all()
-        response = [hotel.to_dict() for hotel in hotels]
-        return make_response(jsonify(response), 200)
+        return jsonify([hotel.to_dict() for hotel in Hotel.query.all()])
 
     @admin_required
     def post(self):
         data = request.get_json()
+        required_fields = ['name', 'city', 'price', 'rooms_available']
+        for field in required_fields:
+            if field not in data:
+                return make_response(jsonify({"error": f"Missing field: {field}"}), 400)
         new_hotel = Hotel(
             name=data['name'],
-            location=data['location'],
-            price_per_night=data['price_per_night'],
-            amenities=data.get('amenities'),
-            image_url=data.get('image_url')
+            city=data['city'],
+            price=data['price'],
+            rooms_available=data['rooms_available']
         )
         db.session.add(new_hotel)
         db.session.commit()
@@ -276,87 +272,63 @@ class HotelByID(Resource):
 api.add_resource(HotelByID, '/hotels/<int:hotel_id>')
 
 class UserFlights(Resource):
+    @jwt_required()
     def get(self):
-        user_flights = UserFlight.query.all()
-        response = [user_flight.to_dict() for user_flight in user_flights]
-        return make_response(jsonify(response), 200)
+        user_id = get_jwt_identity()
+        user_flights = UserFlight.query.filter_by(user_id=user_id).all()
+        return make_response(jsonify([uf.to_dict() for uf in user_flights]), 200)
 
-    @admin_required
+    @jwt_required()
     def post(self):
         data = request.get_json()
+        user_id = get_jwt_identity()
         new_user_flight = UserFlight(
-            user_id=data['user_id'],
+            user_id=user_id,
             flight_id=data['flight_id']
         )
         db.session.add(new_user_flight)
         db.session.commit()
         return make_response(jsonify(new_user_flight.to_dict()), 201)
 
-api.add_resource(UserFlights, '/user_flights')
-
-class UserFlightByID(Resource):
-    def get(self, user_flight_id):
-        user_flight = UserFlight.query.get_or_404(user_flight_id)
-        return make_response(jsonify(user_flight.to_dict()), 200)
-
-    @admin_required
-    def delete(self, user_flight_id):
-        user_flight = UserFlight.query.get_or_404(user_flight_id)
-        db.session.delete(user_flight)
-        db.session.commit()
-        return make_response(jsonify({"message": "UserFlight deleted"}), 200)
-
-api.add_resource(UserFlightByID, '/user_flights/<int:user_flight_id>')
+api.add_resource(UserFlights, '/user/flights')
 
 class UserHotels(Resource):
+    @jwt_required()
     def get(self):
-        user_hotels = UserHotel.query.all()
-        response = [user_hotel.to_dict() for user_hotel in user_hotels]
-        return make_response(jsonify(response), 200)
+        user_id = get_jwt_identity()
+        user_hotels = UserHotel.query.filter_by(user_id=user_id).all()
+        return make_response(jsonify([uh.to_dict() for uh in user_hotels]), 200)
 
-    @admin_required
+    @jwt_required()
     def post(self):
         data = request.get_json()
+        user_id = get_jwt_identity()
         new_user_hotel = UserHotel(
-            user_id=data['user_id'],
+            user_id=user_id,
             hotel_id=data['hotel_id']
         )
         db.session.add(new_user_hotel)
         db.session.commit()
         return make_response(jsonify(new_user_hotel.to_dict()), 201)
 
-api.add_resource(UserHotels, '/user_hotels')
-
-class UserHotelByID(Resource):
-    def get(self, user_hotel_id):
-        user_hotel = UserHotel.query.get_or_404(user_hotel_id)
-        return make_response(jsonify(user_hotel.to_dict()), 200)
-
-    @admin_required
-    def delete(self, user_hotel_id):
-        user_hotel = UserHotel.query.get_or_404(user_hotel_id)
-        db.session.delete(user_hotel)
-        db.session.commit()
-        return make_response(jsonify({"message": "UserHotel deleted"}), 200)
-
-api.add_resource(UserHotelByID, '/user_hotels/<int:user_hotel_id>')
+api.add_resource(UserHotels, '/user/hotels')
 
 class Bookings(Resource):
+    @jwt_required()
     def get(self):
-        bookings = Booking.query.all()
-        response = [booking.to_dict() for booking in bookings]
-        return make_response(jsonify(response), 200)
+        user_id = get_jwt_identity()
+        bookings = Booking.query.filter_by(user_id=user_id).all()
+        return make_response(jsonify([booking.to_dict() for booking in bookings]), 200)
 
-    @admin_required
+    @jwt_required()
     def post(self):
         data = request.get_json()
+        user_id = get_jwt_identity()
         new_booking = Booking(
-            user_id=data['user_id'],
+            user_id=user_id,
             flight_id=data.get('flight_id'),
             hotel_id=data.get('hotel_id'),
-            check_in_date=datetime.fromisoformat(data['check_in_date']),
-            check_out_date=datetime.fromisoformat(data['check_out_date']),
-            total_price=data['total_price']
+            booking_date=datetime.utcnow()
         )
         db.session.add(new_booking)
         db.session.commit()
@@ -364,31 +336,14 @@ class Bookings(Resource):
 
 api.add_resource(Bookings, '/bookings')
 
-class BookingByID(Resource):
-    def get(self, booking_id):
-        booking = Booking.query.get_or_404(booking_id)
-        return make_response(jsonify(booking.to_dict()), 200)
+# class UserInfo(Resource):
+#     @jwt_required()
+#     def get(self):
+#         current_user_id = get_jwt_identity()
+#         user = User.query.get_or_404(current_user_id)
+#         return make_response(jsonify(user.to_dict()), 200)
 
-    @admin_required
-    def patch(self, booking_id):
-        booking = Booking.query.get_or_404(booking_id)
-        data = request.get_json()
-        for key, value in data.items():
-            setattr(booking, key, value)
-        db.session.commit()
-        return make_response(jsonify(booking.to_dict()), 200)
-
-    @admin_required
-    def delete(self, booking_id):
-        booking = Booking.query.get_or_404(booking_id)
-        db.session.delete(booking)
-        db.session.commit()
-        return make_response(jsonify({"message": "Booking deleted"}), 200)
-
-api.add_resource(BookingByID, '/bookings/<int:booking_id>')
-
-
-
+# api.add_resource(UserInfo, '/user/info')
 class Login(Resource):
     def post(self):
         data = request.get_json()
@@ -410,4 +365,4 @@ api.add_resource(Login, '/login/email')
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
