@@ -167,6 +167,8 @@ class Flights(Resource):
         return make_response(jsonify(response), 200)
 
     
+    @jwt_required()
+    @admin_required
     def post(self):
         data = request.get_json()
 
@@ -215,6 +217,8 @@ class FlightByID(Resource):
         return make_response(jsonify(flight.to_dict()), 200)
 
     
+    @jwt_required()
+    @admin_required
     def patch(self, flight_id):
         flight = Flight.query.get_or_404(flight_id)
         data = request.get_json()
@@ -223,7 +227,8 @@ class FlightByID(Resource):
         db.session.commit()
         return make_response(jsonify(flight.to_dict()), 200)
 
-    
+    @jwt_required()
+    @admin_required
     def delete(self, flight_id):
         flight = Flight.query.get_or_404(flight_id)
         db.session.delete(flight)
@@ -235,13 +240,18 @@ api.add_resource(FlightByID, '/flights/<int:flight_id>')
 class Hotels(Resource):
     def get(self):
         return jsonify([hotel.to_dict() for hotel in Hotel.query.all()])
-
+    
+    @jwt_required()
+    @admin_required
     def post(self):
         data = request.get_json()
+
+        # Validate required fields
         required_fields = ['name', 'location', 'price_per_night', 'image_url', 'amenities']
         for field in required_fields:
             if field not in data:
                 return make_response(jsonify({"error": f"Missing field: {field}"}), 400)
+
         new_hotel = Hotel(
             name=data['name'],
             location=data['location'],
@@ -249,8 +259,10 @@ class Hotels(Resource):
             image_url=data['image_url'],
             amenities=data['amenities']
         )
+
         db.session.add(new_hotel)
         db.session.commit()
+
         return make_response(jsonify(new_hotel.to_dict()), 201)
 
 
@@ -261,6 +273,8 @@ class HotelByID(Resource):
         hotel = Hotel.query.get_or_404(hotel_id)
         return make_response(jsonify(hotel.to_dict()), 200)
 
+    @jwt_required()
+    @admin_required
     def patch(self, hotel_id):
         hotel = Hotel.query.get_or_404(hotel_id)
         data = request.get_json()
@@ -284,8 +298,9 @@ class HotelByID(Resource):
 
 
 
-    
+    @admin_required
     def delete(self, hotel_id):
+        print(f"Headers: {request.headers}")
         hotel = Hotel.query.get_or_404(hotel_id)
         try:
             db.session.delete(hotel)
@@ -293,6 +308,7 @@ class HotelByID(Resource):
             return make_response(jsonify({"message": "Hotel deleted"}), 200)
         except Exception as e:
             db.session.rollback()
+            print(f"Error deleting hotel: {e}")
             return make_response(jsonify({"error": "Unable to delete the hotel."}), 500)
 
 api.add_resource(HotelByID, '/hotels/<int:hotel_id>')
