@@ -128,7 +128,7 @@ class Flights(Resource):
         passengers = int(request.args.get('passengers', 1))
 
         # If no specific search parameters are provided, return all flights
-        if not from_city and not to_city an@admin_requiredd not outbound_date_str:
+        if not from_city and not to_city and not outbound_date_str:
             flights = Flight.query.all()
             response = [flight.to_dict() for flight in flights]
             return make_response(jsonify(response), 200)
@@ -236,7 +236,6 @@ class Hotels(Resource):
     def get(self):
         return jsonify([hotel.to_dict() for hotel in Hotel.query.all()])
 
-    
     def post(self):
         data = request.get_json()
         required_fields = ['name', 'location', 'price_per_night', 'image_url', 'amenities']
