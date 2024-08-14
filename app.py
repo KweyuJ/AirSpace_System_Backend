@@ -15,7 +15,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config["JWT_SECRET_KEY"] = "super-secret"
 app.json.compact = False
 
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
@@ -46,14 +46,12 @@ api.add_resource(Index, '/')
 
 class Users(Resource):
     def get(self):
-        # Admins should be able to list all users
-        user_id = get_jwt_identity()
-        user = User.query.get_or_404(user_id)
-        if user.role != 'admin':
-            return make_response(jsonify({"error": "Admin access required"}), 403)
+        
+        
         users = User.query.all()
         response = [user.to_dict() for user in users]
         return make_response(jsonify(response), 200)
+    
 
     def post(self):
         data = request.get_json()
@@ -130,7 +128,7 @@ class Flights(Resource):
         passengers = int(request.args.get('passengers', 1))
 
         # If no specific search parameters are provided, return all flights
-        if not from_city and not to_city and not outbound_date_str:
+        if not from_city and not to_city an@admin_requiredd not outbound_date_str:
             flights = Flight.query.all()
             response = [flight.to_dict() for flight in flights]
             return make_response(jsonify(response), 200)
@@ -168,22 +166,28 @@ class Flights(Resource):
 
         return make_response(jsonify(response), 200)
 
-    @admin_required
+    
     def post(self):
         data = request.get_json()
 
         # Validate required fields
-        required_fields = ['flight_number', 'departure_city', 'arrival_city', 'departure_date', 'arrival_date', 'price', 'seats_available']
+        required_fields = [
+            'flight_number', 'departure_city', 'arrival_city', 
+            'departure_date', 'arrival_date', 'departure_time', 
+            'arrival_time', 'price', 'seats_available'
+        ]
         for field in required_fields:
             if field not in data:
                 return make_response(jsonify({"error": f"Missing field: {field}"}), 400)
 
-        # Convert date strings to datetime objects
+        # Convert date and time strings to datetime objects
         try:
             departure_date = datetime.fromisoformat(data['departure_date'])
             arrival_date = datetime.fromisoformat(data['arrival_date'])
+            departure_time = datetime.strptime(data['departure_time'], '%H:%M:%S').time()
+            arrival_time = datetime.strptime(data['arrival_time'], '%H:%M:%S').time()
         except ValueError as e:
-            return make_response(jsonify({"error": "Invalid date format"}), 400)
+            return make_response(jsonify({"error": "Invalid date or time format"}), 400)
         
         new_flight = Flight(
             flight_number=data['flight_number'],
@@ -191,8 +195,11 @@ class Flights(Resource):
             arrival_city=data['arrival_city'],
             departure_date=departure_date,
             arrival_date=arrival_date,
+            departure_time=departure_time,
+            arrival_time=arrival_time,
             price=data['price'],
-            seats_available=data['seats_available']
+            seats_available=data['seats_available'],
+            trip_type=data.get('trip_type')  # Optional field
         )
         
         db.session.add(new_flight)
@@ -207,7 +214,7 @@ class FlightByID(Resource):
         flight = Flight.query.get_or_404(flight_id)
         return make_response(jsonify(flight.to_dict()), 200)
 
-    @admin_required
+    
     def patch(self, flight_id):
         flight = Flight.query.get_or_404(flight_id)
         data = request.get_json()
@@ -216,7 +223,7 @@ class FlightByID(Resource):
         db.session.commit()
         return make_response(jsonify(flight.to_dict()), 200)
 
-    @admin_required
+    
     def delete(self, flight_id):
         flight = Flight.query.get_or_404(flight_id)
         db.session.delete(flight)
@@ -229,22 +236,24 @@ class Hotels(Resource):
     def get(self):
         return jsonify([hotel.to_dict() for hotel in Hotel.query.all()])
 
-    @admin_required
+    
     def post(self):
         data = request.get_json()
-        required_fields = ['name', 'city', 'price', 'rooms_available']
+        required_fields = ['name', 'location', 'price_per_night', 'image_url', 'amenities']
         for field in required_fields:
             if field not in data:
                 return make_response(jsonify({"error": f"Missing field: {field}"}), 400)
         new_hotel = Hotel(
             name=data['name'],
-            city=data['city'],
-            price=data['price'],
-            rooms_available=data['rooms_available']
+            location=data['location'],
+            price_per_night=data['price_per_night'],
+            image_url=data['image_url'],
+            amenities=data['amenities']
         )
         db.session.add(new_hotel)
         db.session.commit()
         return make_response(jsonify(new_hotel.to_dict()), 201)
+
 
 api.add_resource(Hotels, '/hotels')
 
@@ -253,21 +262,39 @@ class HotelByID(Resource):
         hotel = Hotel.query.get_or_404(hotel_id)
         return make_response(jsonify(hotel.to_dict()), 200)
 
-    @admin_required
     def patch(self, hotel_id):
         hotel = Hotel.query.get_or_404(hotel_id)
         data = request.get_json()
-        for key, value in data.items():
-            setattr(hotel, key, value)
-        db.session.commit()
-        return make_response(jsonify(hotel.to_dict()), 200)
 
-    @admin_required
+        # Debugging: print out received data
+        print(f"Received data for update: {data}")
+
+        try:
+            for key, value in data.items():
+                if key in ['price_per_night']:  # Handle specific types if needed
+                    setattr(hotel, key, float(value))
+                else:
+                    setattr(hotel, key, value)
+            
+            db.session.commit()
+            return make_response(jsonify(hotel.to_dict()), 200)
+        except Exception as e:
+            print(f"Error processing update: {e}")
+            db.session.rollback()  # Rollback in case of error
+            return make_response(jsonify({"error": "Unable to process the update."}), 422)
+
+
+
+    
     def delete(self, hotel_id):
         hotel = Hotel.query.get_or_404(hotel_id)
-        db.session.delete(hotel)
-        db.session.commit()
-        return make_response(jsonify({"message": "Hotel deleted"}), 200)
+        try:
+            db.session.delete(hotel)
+            db.session.commit()
+            return make_response(jsonify({"message": "Hotel deleted"}), 200)
+        except Exception as e:
+            db.session.rollback()
+            return make_response(jsonify({"error": "Unable to delete the hotel."}), 500)
 
 api.add_resource(HotelByID, '/hotels/<int:hotel_id>')
 
@@ -363,6 +390,23 @@ class Login(Resource):
 
 api.add_resource(Login, '/login/email')
 
+class UserProfile(Resource):
+    @jwt_required()
+    def get(self):
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        if user:
+            user_data = {
+                "id": user.user_id,
+                "email": user.email,
+                "role": user.role,
+                "name": user.name,  # Adjust according to your User model
+                # Add any other fields you want to display
+            }
+            return jsonify(user_data)
+        return make_response(jsonify({"error": "User not found"}), 404)
+
+api.add_resource(UserProfile, '/user/profile')
 
 if __name__ == '__main__':
     app.run(debug=True)

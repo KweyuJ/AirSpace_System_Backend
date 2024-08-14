@@ -13,10 +13,19 @@ with app.app_context():
     User.query.delete()
 
     print("Creating users...")
-    user1 = User(first_name="Alice", last_name="Johnson", email="alice@example.com", password="password", role="traveler", phone_number="1234567890")
-    user2 = User(first_name="Bob", last_name="Smith", email="bob@example.com", password="password", role="traveler", phone_number="0987654321")
-    user3 = User(first_name="Admin", last_name="User", email="admin@example.com", password="password", role="admin", phone_number="1122334455")
-    users = [user1, user2, user3]
+    user1 = User(first_name="Alice", last_name="Johnson", email="alice@gmail.com", password="password", role="traveler", phone_number="0734567890")
+    user2 = User(first_name="Bob", last_name="Smith", email="bob@gmail.com", password="password", role="traveler", phone_number="0787654321")
+    user3 = User(first_name="Admin", last_name="User", email="admin@gmail.com", password="password", role="admin", phone_number="0722334455")
+    user4 = User(first_name="Charlie", last_name="Brown", email="charlie@gmail.com", password="password", role="traveler", phone_number="0733445566")
+    user5 = User(first_name="Diana", last_name="Prince", email="diana@gmail.com", password="password", role="traveler", phone_number="0744556677")
+    user6 = User(first_name="Eve", last_name="Polastri", email="eve@gmail.com", password="password", role="traveler", phone_number="0755667788")
+    user7 = User(first_name="Frank", last_name="Castle", email="frank@gmail.com", password="password", role="traveler", phone_number="0766778899")
+    user8 = User(first_name="Grace", last_name="Hopper", email="grace@gmail.com", password="password", role="traveler", phone_number="0777889900")
+    user9 = User(first_name="Hank", last_name="Pym", email="hank@gmail.com", password="password", role="traveler", phone_number="0788990011")
+    user10 = User(first_name="Ivy", last_name="Green", email="ivy@gmail.com", password="password", role="traveler", phone_number="0799001122")
+
+    users = [user1, user2, user3, user4, user5, user6, user7, user8, user9, user10]
+
 
     print("Creating flights...")
     flights = [
