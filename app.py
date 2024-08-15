@@ -8,6 +8,11 @@ from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from functools import wraps
+from flask_restful import reqparse
+import json
+import base64
+import requests
+from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///airescape.db'
@@ -422,6 +427,98 @@ class UserProfile(Resource):
         return make_response(jsonify({"error": "User not found"}), 404)
 
 api.add_resource(UserProfile, '/user/profile')
+
+def get_mpesa_token():
+
+    consumer_key = 'YXZhAOLvjYqmX7TkAirasXHJfTjUHHqQtIOAGXYTLjjVfvUK'
+    consumer_secret = 'c6SpWnqqHckfRGGGKQt56LKdwIDrMQXeHlGs9PEiSbfGLLAmnbUjc7niS8olHtJ2'
+
+    api_URL = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+
+    # make a get request using python requests liblary
+    r = requests.get(api_URL, auth=HTTPBasicAuth(consumer_key, consumer_secret))
+
+    # return access_token from response
+    return r.json()['access_token']
+
+
+class MakeSTKPush(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument('phone',
+                        type=str,
+                        required=True,
+                        help="This field is required")
+
+    parser.add_argument('amount',
+                        type=str,
+                        required=True,
+                        help="This field is required")
+
+    def post(self):
+        """Make an STK push to Daraja API"""
+
+        # get phone and amount from request body
+        data = MakeSTKPush.parser.parse_args()
+
+        # encode business_shortcode, online_passkey and current_time (yyyyMMhhmmss) to base64
+        encode_data = b"<Business_shortcode><online_passkey><current timestamp>"
+        passkey = base64.b64encode(encode_data)
+
+        # make stk push
+        try:
+            # get access_token
+            access_token = get_mpesa_token()
+
+            # stk_push request url
+            api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+
+            # put access_token in request headers
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+
+            # define request body
+            request = {
+                "BusinessShortCode": "174379",
+                "Password": "MTc0Mzc5YmZiMjc5ZjlhYTliZGJjZjE1OGU5N2RkNzFhNDY3Y2QyZTBjODkzMDU5YjEwZjc4ZTZiNzJhZGExZWQyYzkxOTIwMTYwMjE2MTY1NjI3",
+                "Timestamp": "20160216165627",
+                "TransactionType": "CustomerPayBillOnline",
+                "Amount": data["amount"],
+                "PartyA": data["phone"],
+                "PartyB": "174379",
+                "PhoneNumber": data["phone"],
+                "CallBackURL": "https://mydomain.com/pat",
+                "AccountReference": "Test",
+                "TransactionDesc": "Test"
+            }
+
+            # make request and catch response
+            response = requests.post(api_url, json=request, headers=headers)
+
+            # check response code for errors and return response
+            if response.status_code > 299:
+                return {
+                    "success": False,
+                    "message": "Sorry, something went wrong please try again later."
+                }, 400
+
+            
+            # return a response to your user
+            return {
+                "data": json.loads(response.text)
+            }, 200
+
+        except:
+            # catch error and return response
+            return {
+                "success": False,
+                "message": "Sorry something went wrong please try again."
+            }, 400
+
+
+# stk push path [POST request to {baseURL}/stkpush]
+api.add_resource(MakeSTKPush, "/stkpush")
 
 if __name__ == '__main__':
     app.run(debug=True)
