@@ -54,7 +54,7 @@ with app.app_context():
         Flight(flight_number="KA654", departure_city="Nakuru", arrival_city="Nairobi", departure_date=datetime(2024, 12, 31), arrival_date=datetime(2024, 12, 31), departure_time=time(0, 0), arrival_time=time(1, 0), price=6740, seats_available=15, trip_type="oneway")
     ]
 
-    print("Creating hotels...")
+    print("Creating hotels....")
     hotels = [
         Hotel(name="Southern Palms Beach Resort", image_url="https://cf.bstatic.com/xdata/images/hotel/max1024x768/221320289.jpg?k=1203f024f73c994f979bc9aea38a85e531a038f988994c1681df935203e83845&o=&hp=1", location="Diani Beach Road Diani, Ukunda", price_per_night=25000, amenities="2 outdoor swimming pools, Free on-site parking, Air conditioning, Private Bathroom, Free Wifi, Room service, Family rooms, 5 restaurants, Breakfast, Spa, Gym"),
         Hotel(name="Kilili Baharini Resort & Spa", image_url="https://www.kililibaharini.com/wp-content/uploads/2019/11/mainpool-slide.jpg", location="Casuarina Road, Malindi, Kenya", price_per_night=18000, amenities="Beach Access, Free Breakfast, Gym, Free Parking"),
