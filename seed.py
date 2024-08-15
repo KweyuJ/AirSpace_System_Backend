@@ -22,6 +22,8 @@ with app.app_context():
     flights = [
         Flight(flight_number="AA123", departure_city="Nairobi", arrival_city="Kisumu", departure_date=datetime(2024, 8, 15), arrival_date=datetime(2024, 8, 15), departure_time=time(10, 0), arrival_time=time(11, 0), price=7420, seats_available=10, trip_type="oneway"),
         Flight(flight_number="BA456", departure_city="Mombasa", arrival_city="Nairobi", departure_date=datetime(2024, 9, 10), arrival_date=datetime(2024, 9, 10), departure_time=time(9, 0), arrival_time=time(10, 0), price=7000, seats_available=80, trip_type="oneway"),
+        Flight(flight_number="BA457", departure_city="Eldoret", arrival_city="Nairobi", departure_date=datetime(2024, 8, 20), arrival_date=datetime(2024, 8, 20), departure_time=time(9, 0), arrival_time=time(10, 0), price=1, seats_available=80, trip_type="oneway"),
+        
         
         # Roundtrip flights: Nairobi to Kisumu and back
         Flight(flight_number="RT123-OUT", departure_city="Nairobi", arrival_city="Kisumu", departure_date=datetime(2024, 12, 15), arrival_date=datetime(2024, 12, 15), departure_time=time(8, 0), arrival_time=time(9, 0), price=5000, seats_available=20, trip_type="roundtrip"),
