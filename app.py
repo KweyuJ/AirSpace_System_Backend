@@ -490,7 +490,8 @@ class MakeSTKPush(Resource):
                 "PartyA": data["phone"],
                 "PartyB": "174379",
                 "PhoneNumber": data["phone"],
-                "CallBackURL": "https://mydomain.com/pat",
+                "CallBackURL": "https://airspace-system-backend-4.vercel.app/mpesa/callback",
+
                 "AccountReference": "Test",
                 "TransactionDesc": "Test"
             }
